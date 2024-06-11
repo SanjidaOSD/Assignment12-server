@@ -32,6 +32,7 @@ async function run() {
 
         // Database Colletions
         const userCollection = client.db("pethouse").collection("users");
+        const petCollection = client.db("pethouse").collection("pets");
 
         app.get('/', async (req, res) => {
             res.send('Pet house is running...')
@@ -94,7 +95,12 @@ async function run() {
             res.send(result);
         });
 
-
+        // Insert a new pet data to db
+        app.post('/pet', async(req, res)=>{
+            const newPet = req.body;
+            const result = await petCollection.insertOne(newPet);
+            res.send(result)
+        })
 
 
         // Send a ping to confirm a successful connection
