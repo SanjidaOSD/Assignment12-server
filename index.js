@@ -102,6 +102,13 @@ async function run() {
             res.send(result)
         })
 
+        // Get all added pet for specific user email
+        app.get('/my-added-pets/:email', async(req, res)=>{
+            const email = req.params.email;
+            const result = await petCollection.find({email}).toArray()
+            res.send(result)
+        })
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
@@ -115,5 +122,5 @@ async function run() {
 run().catch(console.dir);
 
 app.listen(port, () => {
-    console.log(`Bistro boss is sitting on port ${port}`);
+    console.log(`Pet House is running on port : ${port}`);
 })
