@@ -13,7 +13,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2bg42lh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -106,6 +106,29 @@ async function run() {
         app.get('/my-added-pets/:email', async(req, res)=>{
             const email = req.params.email;
             const result = await petCollection.find({email}).toArray()
+            res.send(result)
+        })
+
+        // Get single pet data by _id
+        app.get('/pet-data/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)}
+            const result = await petCollection.findOne(query)
+            res.send(result)
+        })
+
+        // Update a pet data to db
+        app.patch('/pet-data-update/:id', async(req, res)=>{
+            const id = req.params.id;
+            const pet = req.body;
+            console.log(pet);
+            const query = { _id : new ObjectId(id)};
+            const updateDoc = {
+                $set:{
+                    ...pet
+                }
+            }
+            const result = await petCollection.updateOne(query, updateDoc);
             res.send(result)
         })
 
