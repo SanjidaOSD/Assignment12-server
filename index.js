@@ -164,7 +164,38 @@ async function run() {
         // create a new adopt in db
         app.post('/adopt-request',  async(req, res)=>{
             const newRequest = req.body;
+            console.log(newRequest);
             const result = await adoptCollection.insertOne(newRequest);
+            res.send(result)
+        })
+
+        // get all adoption request from db
+        app.get('/adopt-request', async(req,res)=>{
+            const result = await adoptCollection.find().toArray();
+            res.send(result)
+        })
+
+        // remove a adoption request from db
+        app.delete('/adopt-request/:id', async(req,res)=>{
+            const id = req.params.id
+            const query = {_id : new ObjectId(id)}
+            const result = await adoptCollection.deleteOne(query)
+            res.send(result)
+        })
+
+        // Accept a adopt request
+        app.patch('/accept-adopt-request/:id', async(req, res)=>{
+            const id = req.params.id;
+            console.log(id);
+            const query = { _id : new ObjectId(id)};
+            console.log(query);
+            const updateDoc = {
+                $set : {
+                    status : "accepted"
+                }
+            }
+            const result = await adoptCollection.updateOne(query, updateDoc)
+            console.log(result);
             res.send(result)
         })
 
