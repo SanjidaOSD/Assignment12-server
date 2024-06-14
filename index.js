@@ -30,9 +30,12 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        // Database Colletions
+        //=================  Database Collections =================
+
         const userCollection = client.db("pethouse").collection("users");
         const petCollection = client.db("pethouse").collection("pets");
+        const campaignCollection = client.db("pethouse").collection("campaign");
+        const adoptCollection = client.db("pethouse").collection("adopt");
 
         app.get('/', async (req, res) => {
             res.send('Pet house is running...')
@@ -95,36 +98,43 @@ async function run() {
             res.send(result);
         });
 
+        //=================  Pet Collection related api =================
+
         // Insert a new pet data to db
-        app.post('/pet', async(req, res)=>{
+        app.post('/pet', async (req, res) => {
             const newPet = req.body;
             const result = await petCollection.insertOne(newPet);
             res.send(result)
         })
+        // Get all pets data from db
+        app.get('/pets', async (req, res) => {
+            const result = await petCollection.find().toArray()
+            res.send(result)
+        })
 
         // Get all added pet for specific user email
-        app.get('/my-added-pets/:email', async(req, res)=>{
+        app.get('/my-added-pets/:email', async (req, res) => {
             const email = req.params.email;
-            const result = await petCollection.find({email}).toArray()
+            const result = await petCollection.find({ email }).toArray()
             res.send(result)
         })
 
         // Get single pet data by _id
-        app.get('/pet-data/:id', async(req, res)=>{
+        app.get('/pet-data/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await petCollection.findOne(query)
             res.send(result)
         })
 
         // Update a pet data to db
-        app.patch('/pet-data-update/:id', async(req, res)=>{
+        app.patch('/pet-data-update/:id', async (req, res) => {
             const id = req.params.id;
             const pet = req.body;
             console.log(pet);
-            const query = { _id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const updateDoc = {
-                $set:{
+                $set: {
                     ...pet
                 }
             }
@@ -133,10 +143,28 @@ async function run() {
         })
 
         // Delete a pet data from db
-        app.delete('/pet-data-delete/:id', async(req, res)=>{
+        app.delete('/pet-data-delete/:id', async (req, res) => {
             const id = req.params.id;
-            const query = { _id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await petCollection.deleteOne(query);
+            res.send(result)
+        })
+
+        //=================  Campaign Collection related api =================
+
+        //Create a new campaign to DB
+        app.post('/create-campaign', async (req, res) => {
+            const newCampaign = req.body;
+            const result = await campaignCollection.insertOne(newCampaign)
+            res.send(result)
+        })
+
+
+        //=================  Adopt Request related api =================
+        // create a new adopt in db
+        app.post('/adopt-request',  async(req, res)=>{
+            const newRequest = req.body;
+            const result = await adoptCollection.insertOne(newRequest);
             res.send(result)
         })
 
