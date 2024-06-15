@@ -1,19 +1,16 @@
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
-// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
-
+console.log(process.env.STRIPE_SECRET_KEY);
 // middleware
 app.use(cors());
 app.use(express.json());
 
-
-
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.2bg42lh.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -36,6 +33,7 @@ async function run() {
         const petCollection = client.db("pethouse").collection("pets");
         const campaignCollection = client.db("pethouse").collection("campaign");
         const adoptCollection = client.db("pethouse").collection("adopt");
+        const paymentCollection = client.db("pethouse").collection("payment");
 
         app.get('/', async (req, res) => {
             res.send('Pet house is running...')
@@ -159,10 +157,25 @@ async function run() {
             res.send(result)
         })
 
+        //Get all donation campaigns from DB
+        app.get('/donation-campaign', async (req, res) => {
+            const result = await campaignCollection.find().toArray()
+            res.send(result)
+        })
+
+        //Get donation campaign details from DB
+        app.get('/donation-campaign-details/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await campaignCollection.findOne(query)
+            res.send(result)
+        })
+
 
         //=================  Adopt Request related api =================
+
         // create a new adopt in db
-        app.post('/adopt-request',  async(req, res)=>{
+        app.post('/adopt-request', async (req, res) => {
             const newRequest = req.body;
             console.log(newRequest);
             const result = await adoptCollection.insertOne(newRequest);
@@ -170,35 +183,66 @@ async function run() {
         })
 
         // get all adoption request from db
-        app.get('/adopt-request', async(req,res)=>{
+        app.get('/adopt-request', async (req, res) => {
             const result = await adoptCollection.find().toArray();
             res.send(result)
         })
 
         // remove a adoption request from db
-        app.delete('/adopt-request/:id', async(req,res)=>{
+        app.delete('/adopt-request/:id', async (req, res) => {
             const id = req.params.id
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await adoptCollection.deleteOne(query)
             res.send(result)
         })
 
         // Accept a adopt request
-        app.patch('/accept-adopt-request/:id', async(req, res)=>{
+        app.patch('/accept-adopt-request/:id', async (req, res) => {
             const id = req.params.id;
-            console.log(id);
-            const query = { _id : new ObjectId(id)};
-            console.log(query);
+            const query = { _id: new ObjectId(id) };
             const updateDoc = {
-                $set : {
-                    status : "accepted"
+                $set: {
+                    status: "accepted"
                 }
             }
             const result = await adoptCollection.updateOne(query, updateDoc)
-            console.log(result);
             res.send(result)
         })
 
+        //=================  Payment related api =================
+
+        // Make a payment
+        app.post('/payment-intent', async (req, res) => {
+            const { fees } = req.body;
+            console.log(fees);
+            const amount = parseInt(fees * 100)
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            console.log(paymentIntent);
+            res.send({
+                clientSecret: paymentIntent?.client_secret
+            })
+        })
+
+        // Create a payment data for donated amount in db
+        app.post('/donation-payment', async(req, res)=>{
+            const newDonation = req.body;
+            const result = await paymentCollection.insertOne(newDonation);
+            res.send(result)
+        })
+
+        // get payment data for donated user email
+        app.get('/donation-payment/:email', async(req, res)=>{
+            const email = req.params.email;
+            console.log(email);
+            const query = {userEmail : email}
+            const result = await paymentCollection.find(query).toArray();
+            console.log(result);
+            res.send(result)
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
