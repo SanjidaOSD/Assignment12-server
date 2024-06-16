@@ -227,6 +227,8 @@ async function run() {
             })
         })
 
+        //=================  Payment Collection related api =================
+
         // Create a payment data for donated amount in db
         app.post('/donation-payment', async(req, res)=>{
             const newDonation = req.body;
@@ -241,6 +243,14 @@ async function run() {
             const query = {userEmail : email}
             const result = await paymentCollection.find(query).toArray();
             console.log(result);
+            res.send(result)
+        })
+
+        // Delete a payment data from db
+        app.delete('/delete-donation/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)}
+            const result = await paymentCollection.deleteOne(query)
             res.send(result)
         })
 
