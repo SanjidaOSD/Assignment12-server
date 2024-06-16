@@ -120,7 +120,12 @@ async function run() {
 
         // Get all pets data from db
         app.get('/pets', async (req, res) => {
-            const result = await petCollection.find().toArray()
+            const search = req.query.search || "";
+            console.log(search);
+            let query = {
+                petName : {$regex : search, $options: 'i'}
+            }
+            const result = await petCollection.find(query).toArray()
             res.send(result)
         })
 
@@ -182,6 +187,14 @@ async function run() {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await campaignCollection.findOne(query)
+            res.send(result)
+        })
+
+        //Delete donation campaign  from DB
+        app.delete('/donation-campaign/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await campaignCollection.deleteOne(query)
             res.send(result)
         })
 
