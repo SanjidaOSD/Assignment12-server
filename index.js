@@ -96,6 +96,19 @@ async function run() {
             res.send(result);
         });
 
+        // Update user role
+        app.patch('/users/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)};
+            const updateDoc = {
+                $set:{
+                    role : "admin"
+                }
+            }
+            const result = await userCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
+
         //=================  Pet Collection related api =================
 
         // Insert a new pet data to db
@@ -104,6 +117,7 @@ async function run() {
             const result = await petCollection.insertOne(newPet);
             res.send(result)
         })
+
         // Get all pets data from db
         app.get('/pets', async (req, res) => {
             const result = await petCollection.find().toArray()
@@ -170,6 +184,70 @@ async function run() {
             const result = await campaignCollection.findOne(query)
             res.send(result)
         })
+
+        //Get donation campaigns from DB by specific Email
+        app.get('/donation-campaigns/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { campaignCreator : email }
+            const result = await campaignCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        // update campaign total donation amount and donators data after a single payment
+        app.patch(`/payment-update-campaign/:id`, async(req, res)=>{
+            const id = req.params.id;
+            const updateData = req.body;
+            const query = {_id : new ObjectId(id)}
+            const updatedDoc = {
+                $set:{
+                    totalDonatedAmount : updateData.totalDonatedAmount,
+                    donators : [...updateData.donators]
+                }
+            }
+            const result = await campaignCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
+        // update campaign data
+        app.patch(`/update-campaign/:id`, async(req, res)=>{
+            const id = req.params.id;
+            const updateData = req.body;
+            const query = {_id : new ObjectId(id)}
+            const updatedDoc = {
+                $set:{
+                    ...updateData
+                }
+            }
+            const result = await campaignCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
+        // Make true Pause Status of campaign
+        app.patch(`/pause-true/:id`, async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)}
+            const updatedDoc = {
+                $set:{
+                    pauseStatus : true
+                }
+            }
+            const result = await campaignCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
+        // Make false Pause Status of campaign
+        app.patch(`/pause-false/:id`, async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)}
+            const updatedDoc = {
+                $set:{
+                    pauseStatus : false
+                }
+            }
+            const result = await campaignCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
 
 
         //=================  Adopt Request related api =================
