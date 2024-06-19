@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
-console.log(process.env.STRIPE_SECRET_KEY);
 // middleware
 app.use(
     cors({
@@ -142,15 +141,29 @@ async function run() {
         // Get all pets data from db
         app.get('/pets', async (req, res) => {
             const search = req.query.search || "";
-            console.log(search);
             const size = parseInt(req.query.limit);
             const page = parseInt(req.query.skip);
+            const category = req.query.category || ""; 
+
             let query = {
                 petName: { $regex: search, $options: 'i' }
             }
-            const result = await petCollection.find(query).limit(size).skip(page).toArray()
-            res.send(result)
-        })
+            if (category) {
+                query.category = category;
+            }
+
+            try {
+                const result = await petCollection.find(query)
+                    .sort({ category: 1 }) 
+                    .limit(size)
+                    .skip(page)
+                    .toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching pets:", error);
+                res.status(500).send("Error fetching pets");
+            }
+        });
 
 
 
@@ -173,7 +186,6 @@ async function run() {
         app.patch('/pet-data-update/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const pet = req.body;
-            console.log(pet);
             const query = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
@@ -295,7 +307,6 @@ async function run() {
         // create a new adopt in db
         app.post('/adopt-request', verifyToken, async (req, res) => {
             const newRequest = req.body;
-            console.log(newRequest);
             const result = await adoptCollection.insertOne(newRequest);
             res.send(result)
         })
@@ -332,14 +343,12 @@ async function run() {
         // Make a payment
         app.post('/payment-intent', verifyToken, async (req, res) => {
             const { fees } = req.body;
-            console.log(fees);
             const amount = parseInt(fees * 100)
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
                 payment_method_types: ['card']
             })
-            console.log(paymentIntent);
             res.send({
                 clientSecret: paymentIntent?.client_secret
             })
@@ -357,10 +366,8 @@ async function run() {
         // get payment data for donated user email
         app.get('/donation-payment/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
-            console.log(email);
             const query = { userEmail: email }
             const result = await paymentCollection.find(query).toArray();
-            console.log(result);
             res.send(result)
         })
 
