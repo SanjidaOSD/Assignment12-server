@@ -77,6 +77,18 @@ async function run() {
             res.send({ admin });
         })
 
+        // use verify admin after verifyToken
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            const isAdmin = user?.role === 'admin';
+            if (!isAdmin) {
+                return res.status(403).send({ message: 'Forbidden Access' });
+            }
+            next();
+        }
+
         //=================  User related api =================
         //Get all user from db
         app.get('/users', async (req, res) => {
@@ -88,8 +100,8 @@ async function run() {
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
-            const existstUser = await userCollection.findOne(query);
-            if (existstUser) {
+            const existUser = await userCollection.findOne(query);
+            if (existUser) {
                 return res.send({ message: 'User Exist', insertedId: null })
             }
             const result = await userCollection.insertOne(user);
@@ -97,22 +109,23 @@ async function run() {
         });
 
         // Update user role
-        app.patch('/users/:id', async(req, res)=>{
+        app.patch('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const updateDoc = {
-                $set:{
-                    role : "admin"
+                $set: {
+                    role: "admin"
                 }
             }
             const result = await userCollection.updateOne(query, updateDoc)
             res.send(result)
         })
 
+
         //=================  Pet Collection related api =================
 
         // Insert a new pet data to db
-        app.post('/pet', async (req, res) => {
+        app.post('/pet', verifyToken, async (req, res) => {
             const newPet = req.body;
             const result = await petCollection.insertOne(newPet);
             res.send(result)
@@ -122,22 +135,26 @@ async function run() {
         app.get('/pets', async (req, res) => {
             const search = req.query.search || "";
             console.log(search);
+            const size = parseInt(req.query.limit);
+            const page = parseInt(req.query.skip);
             let query = {
-                petName : {$regex : search, $options: 'i'}
+                petName: { $regex: search, $options: 'i' }
             }
-            const result = await petCollection.find(query).toArray()
+            const result = await petCollection.find(query).limit(size).skip(page).toArray()
             res.send(result)
         })
 
+
+
         // Get all added pet for specific user email
-        app.get('/my-added-pets/:email', async (req, res) => {
+        app.get('/my-added-pets/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
             const result = await petCollection.find({ email }).toArray()
             res.send(result)
         })
 
         // Get single pet data by _id
-        app.get('/pet-data/:id', async (req, res) => {
+        app.get('/pet-data/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await petCollection.findOne(query)
@@ -145,7 +162,7 @@ async function run() {
         })
 
         // Update a pet data to db
-        app.patch('/pet-data-update/:id', async (req, res) => {
+        app.patch('/pet-data-update/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const pet = req.body;
             console.log(pet);
@@ -160,7 +177,7 @@ async function run() {
         })
 
         // Delete a pet data from db
-        app.delete('/pet-data-delete/:id', async (req, res) => {
+        app.delete('/pet-data-delete/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await petCollection.deleteOne(query);
@@ -170,20 +187,22 @@ async function run() {
         //=================  Campaign Collection related api =================
 
         //Create a new campaign to DB
-        app.post('/create-campaign', async (req, res) => {
+        app.post('/create-campaign', verifyToken, async (req, res) => {
             const newCampaign = req.body;
             const result = await campaignCollection.insertOne(newCampaign)
             res.send(result)
         })
 
         //Get all donation campaigns from DB
-        app.get('/donation-campaign', async (req, res) => {
-            const result = await campaignCollection.find().toArray()
+        app.get('/donationCampaigns', async (req, res) => {
+            const size = parseInt(req.query.limit);
+            const page = parseInt(req.query.skip);
+            const result = await campaignCollection.find().limit(size).skip(page).toArray()
             res.send(result)
         })
 
         //Get donation campaign details from DB
-        app.get('/donation-campaign-details/:id', async (req, res) => {
+        app.get('/donation-campaign-details/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await campaignCollection.findOne(query)
@@ -191,7 +210,7 @@ async function run() {
         })
 
         //Delete donation campaign  from DB
-        app.delete('/donation-campaign/:id', async (req, res) => {
+        app.delete('/donation-campaign/:id', verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await campaignCollection.deleteOne(query)
@@ -199,22 +218,22 @@ async function run() {
         })
 
         //Get donation campaigns from DB by specific Email
-        app.get('/donation-campaigns/:email', async (req, res) => {
+        app.get('/donation-campaigns/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
-            const query = { campaignCreator : email }
+            const query = { campaignCreator: email }
             const result = await campaignCollection.find(query).toArray()
             res.send(result)
         })
 
         // update campaign total donation amount and donators data after a single payment
-        app.patch(`/payment-update-campaign/:id`, async(req, res)=>{
+        app.patch(`/payment-update-campaign/:id`, verifyToken, async (req, res) => {
             const id = req.params.id;
             const updateData = req.body;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updatedDoc = {
-                $set:{
-                    totalDonatedAmount : updateData.totalDonatedAmount,
-                    donators : [...updateData.donators]
+                $set: {
+                    totalDonatedAmount: updateData.totalDonatedAmount,
+                    donators: [...updateData.donators]
                 }
             }
             const result = await campaignCollection.updateOne(query, updatedDoc)
@@ -222,12 +241,12 @@ async function run() {
         })
 
         // update campaign data
-        app.patch(`/update-campaign/:id`, async(req, res)=>{
+        app.patch(`/update-campaign/:id`, verifyToken, async (req, res) => {
             const id = req.params.id;
             const updateData = req.body;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updatedDoc = {
-                $set:{
+                $set: {
                     ...updateData
                 }
             }
@@ -236,12 +255,12 @@ async function run() {
         })
 
         // Make true Pause Status of campaign
-        app.patch(`/pause-true/:id`, async(req, res)=>{
+        app.patch(`/pause-true/:id`, verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updatedDoc = {
-                $set:{
-                    pauseStatus : true
+                $set: {
+                    pauseStatus: true
                 }
             }
             const result = await campaignCollection.updateOne(query, updatedDoc)
@@ -249,12 +268,12 @@ async function run() {
         })
 
         // Make false Pause Status of campaign
-        app.patch(`/pause-false/:id`, async(req, res)=>{
+        app.patch(`/pause-false/:id`, verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const updatedDoc = {
-                $set:{
-                    pauseStatus : false
+                $set: {
+                    pauseStatus: false
                 }
             }
             const result = await campaignCollection.updateOne(query, updatedDoc)
@@ -266,7 +285,7 @@ async function run() {
         //=================  Adopt Request related api =================
 
         // create a new adopt in db
-        app.post('/adopt-request', async (req, res) => {
+        app.post('/adopt-request', verifyToken, async (req, res) => {
             const newRequest = req.body;
             console.log(newRequest);
             const result = await adoptCollection.insertOne(newRequest);
@@ -274,13 +293,13 @@ async function run() {
         })
 
         // get all adoption request from db
-        app.get('/adopt-request', async (req, res) => {
+        app.get('/adopt-request', verifyToken, async (req, res) => {
             const result = await adoptCollection.find().toArray();
             res.send(result)
         })
 
         // remove a adoption request from db
-        app.delete('/adopt-request/:id', async (req, res) => {
+        app.delete('/adopt-request/:id', verifyToken, async (req, res) => {
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const result = await adoptCollection.deleteOne(query)
@@ -288,7 +307,7 @@ async function run() {
         })
 
         // Accept a adopt request
-        app.patch('/accept-adopt-request/:id', async (req, res) => {
+        app.patch('/accept-adopt-request/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const updateDoc = {
@@ -303,7 +322,7 @@ async function run() {
         //=================  Payment related api =================
 
         // Make a payment
-        app.post('/payment-intent', async (req, res) => {
+        app.post('/payment-intent', verifyToken, async (req, res) => {
             const { fees } = req.body;
             console.log(fees);
             const amount = parseInt(fees * 100)
@@ -321,26 +340,26 @@ async function run() {
         //=================  Payment Collection related api =================
 
         // Create a payment data for donated amount in db
-        app.post('/donation-payment', async(req, res)=>{
+        app.post('/donation-payment', verifyToken, async (req, res) => {
             const newDonation = req.body;
             const result = await paymentCollection.insertOne(newDonation);
             res.send(result)
         })
 
         // get payment data for donated user email
-        app.get('/donation-payment/:email', async(req, res)=>{
+        app.get('/donation-payment/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
             console.log(email);
-            const query = {userEmail : email}
+            const query = { userEmail: email }
             const result = await paymentCollection.find(query).toArray();
             console.log(result);
             res.send(result)
         })
 
         // Delete a payment data from db
-        app.delete('/delete-donation/:id', async(req, res)=>{
+        app.delete('/delete-donation/:id', verifyToken, async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await paymentCollection.deleteOne(query)
             res.send(result)
         })
